@@ -1,0 +1,8 @@
+# ninja log v5
+15	160	1716181281977403128	CMakeFiles/raypathing1.dir/list.c.o	ab7cc4dc48cc3096
+9	97	1715488198397386646	CMakeFiles/raypathing1.dir/writefile.c.o	df5ff0febdb91813
+20	1517	1716238724599004586	CMakeFiles/raypathing1.dir/main.cpp.o	ec04ad47becc645e
+21	607	1716238723690570499	CMakeFiles/raypathing1.dir/scene.c.o	e654395044e626b8
+10	142	1716182373444244153	CMakeFiles/raypathing1.dir/ray.c.o	e30bb6e2b28fa676
+1517	1830	1716238724909335621	raypathing1	9e88da8462659218
+21	248	1716168468536030366	CMakeFiles/raypathing1.dir/scenemake.c.o	3515b233a2d102dc
