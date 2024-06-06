@@ -18,6 +18,7 @@ int numrays;
 int w, h;
 material sb;
 uint8_t tsb;
+vec3* normal_vecs;
 
 void init_scene(int sw, int sh, float sx, float sy, material skybox, uint8_t type_sb){
   num_spheres = 0;
@@ -46,6 +47,13 @@ void add_rays(float fov){
       rays[r_n] = a_r;
       r_n++;
     }
+  }
+}
+
+void get_normals() {
+  normal_vecs = malloc(sizeof(vec3) * triangles.num_elements);
+  for(int t = 0; t < triangles.num_elements; t++) {
+    normal_vecs[t] = get_norm(get_triangle(&triangles, t));
   }
 }
 
@@ -90,24 +98,39 @@ ray bounce_ray_once(ray r) {
   ray closest_r;
   closest_r.origin.null = 1;
   closest_r.material_touched = sb;
+  vec3 norm;
+  vec3 best_norm;
+  best_norm.null = 1;
   for(int t = 0; t < triangles.num_elements; t++) {
-    ray b = bounce_ray(r, get_triangle(&triangles, t));
+    ray b = bounce_ray(r, get_triangle(&triangles, t), normal_vecs[t]);
     if(b.origin.null == 0 && b.vector.null == 0) {
       float dist = ray_dist(r, b.origin);
       if(dist < smallest_dist) {
         smallest_dist = dist;
         closest_r = b;
+        best_norm = normal_vecs[t];
+        best_norm.null = 0;
       }
     }
   }
   for(int s = 0; s < spheres.num_elements; s++) {
-    ray b = bounce_ray_sphere(r, get_sphere(&spheres, s));
+    ray b = bounce_ray_sphere(r, get_sphere(&spheres, s), &norm);
     if(b.origin.null == 0 && b.vector.null == 0) {
       float dist = ray_dist(r, b.origin);
       if(dist < smallest_dist) {
         smallest_dist = dist;
         closest_r = b;
+        best_norm = norm;
+        best_norm.null = 0;
       }
+    }
+  }
+  if(!best_norm.null) {
+    uint8_t passed = (rand()%255+1)/255.0 < (closest_r.material_touched.transparency/255.0);
+    if(passed) {
+      float angle_btw = angle_between_vectors(best_norm, r.vector);
+      float ptv = (1.0F-angle_btw/360.0F) * (float)(closest_r.material_touched.refrac_coef)/255.0F;
+      closest_r.vector = add_vectors_ret(multiply_3Dvector_by_num_ret(closest_r.vector, 1.0F-ptv), multiply_3Dvector_by_num_ret(r.vector, ptv));
     }
   }
   return closest_r;
@@ -183,6 +206,10 @@ void printc(color c) {
   printf("R: %d G: %d B: %d\n", c.r, c.g, c.b);
 }
 
+double dev(long long int rt, long long int n, long long int v) {
+  return (double)v / ((double)rt/(double)n);
+}
+
 color px_color(int px, int py, int repetitions, int max_bounces) {
   ray p_r = rays[py*w + px];
   //color r_c = raypath(p_r, max_bounces);
@@ -202,7 +229,20 @@ color px_color(int px, int py, int repetitions, int max_bounces) {
     r2 += tmp.r;
     g2 += tmp.g;
     b2 += tmp.b;
-    r_c = mean_color(r_c, tmp, r+2);
+    //r_c = mean_color(r_c, tmp, r+2);
+    // float dv = 1.1F;
+    // if (r == 0) {
+    //   continue;
+    // } else if (dev(r2, r+1, tmp.r) < 1/dv || dev(r2, r+1, tmp.r) > dv) {
+    //   continue;
+    // } else if (dev(b2, r+1, tmp.b) < 1/dv || dev(b2, r+1, tmp.b) > dv) {
+    //   continue;
+    // } else if (dev(g2, r+1, tmp.g) < 1/dv || dev(g2, r+1, tmp.g) > dv) {
+    //   continue;
+    // } else {
+    //   repetitions = r + 1;
+    //   break;
+    // }
   }
   free(b);
   total /= repetitions/ 2.0F;
@@ -243,12 +283,12 @@ color* post_processing(float a_alias_strength, color* pxs, int numruns) {
         uint8_t bl = brightness[p-1+w];
         uint8_t bc = brightness[p+w];
         uint8_t br = brightness[p+1+w];
-        brightness[p] = (ul+uc+ur+ml+mr+bl+bc+br+t_b)/9;
+        brightness[p] = ((ul+uc+ur+ml+mr+bl+bc+br+t_b)/9 > t_b) ? (ul+uc+ur+ml+mr+bl+bc+br+t_b)/9 : t_b;
 
       }
-      //pxs[p].r = pxs[p].r * (1.0F-a_alias_strength) + c_px.r * (a_alias_strength);
-      //pxs[p].g = pxs[p].g * (1.0F-a_alias_strength) + c_px.g * (a_alias_strength);
-      //pxs[p].b = pxs[p].b * (1.0F-a_alias_strength) + c_px.b * (a_alias_strength);
+      pxs[p].r *=(brightness[p]/255.0F);
+      pxs[p].g *=(brightness[p]/255.0F);
+      pxs[p].b *= (brightness[p]/255.0F);
     }
   }
   return pxs;

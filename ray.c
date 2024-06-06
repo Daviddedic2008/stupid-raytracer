@@ -48,7 +48,7 @@ material add_materials(material r, material m){
   return ret;
 }
 
-material init_material(int r, int g, int b, int br, int t, int rh) {
+material init_material(int r, int g, int b, int br, int t, int rh, unsigned char refrac) {
   material ret;
   ret.c.r = r;
   ret.c.g = g;
@@ -56,6 +56,7 @@ material init_material(int r, int g, int b, int br, int t, int rh) {
   ret.brightness = br;
   ret.transparency = t;
   ret.roughness = rh;
+  ret.refrac_coef = refrac;
   return ret;
 }
 
@@ -208,6 +209,8 @@ ray init_ray(float ox, float oy, float oz, float vx, float vy, float vz, int max
   ret.material_touched.c.r = 0;
   ret.material_touched.c.g = 0;
   ret.material_touched.c.b = 0;
+  ret.in_medium = false;
+  ret.prev_refrac_coef = REF_COEF_AIR;
   return ret;
 }
 
@@ -262,12 +265,22 @@ uint8_t same_dir(vec3 v1, vec3 v2) {
 
 uint8_t point_on_ray(ray r, vec3 p) {
   vec3 vec_rayp = subtract_3Dvectors_result(p, r.origin);
-  return same_dir(r.vector, vec_rayp);
+  if((fabs(subtract_3Dvectors_result(r.origin, p).x) + fabs(subtract_3Dvectors_result(r.origin, p).y) + fabs(subtract_3Dvectors_result(r.origin, p).z)) > 0.1F) {
+    return same_dir(r.vector, vec_rayp);
+  }
+  return false;
+}
+
+vec3 get_norm(triangle t) {
+  vec3 ab = subtract_3Dvectors_result(t.vertice_a, t.vertice_b);
+  vec3 bc = subtract_3Dvectors_result(t.vertice_b, t.vertice_c);
+  vec3 normalized_vector = cross(ab, bc);
+  return normalize_vector(normalized_vector);
 }
 
 // presek izmedu vektora i ravne
 // vrati normalan vektor ravne u norm_v
-vec3 triangle_ray_intersection(ray r, triangle t, vec3* norm_v){
+vec3 triangle_ray_intersection(ray r, triangle t, vec3 norm_v){
   vec3 ret;
   ret.null = false;
   
@@ -293,8 +306,6 @@ vec3 triangle_ray_intersection(ray r, triangle t, vec3* norm_v){
 
   //normalizovan vektor ravne:
   // A-B x C-B
-  vec3 ab = subtract_3Dvectors_result(t.vertice_a, t.vertice_b);
-  vec3 bc = subtract_3Dvectors_result(t.vertice_b, t.vertice_c);
   //print_3Dvector(bc);
 
   /*tu se izracuna cross
@@ -311,8 +322,7 @@ vec3 triangle_ray_intersection(ray r, triangle t, vec3* norm_v){
 
     i * ((aby*bcz) - (bcy * abz)) - j * ((abx*bcz) - (bcx * abz)) + k * ((abx*bcy) - (bcx * aby))
   */
-  vec3 normalized_vector = cross(ab, bc);
-  *norm_v = normalized_vector;
+  vec3 normalized_vector = norm_v;
   /*normalized_vector = nv
   a je tacka na ravni
   jednacina ravne: nvx * (x-ax) + nvy* (y-ay) + nvz*(z-az) = 0
@@ -350,16 +360,15 @@ float ray_dist(ray r, vec3 d){
   return(dist_between_vec(d, r.origin));
 }
 
-ray bounce_ray(ray r, triangle t){
+ray bounce_ray(ray r, triangle t, vec3 nv){
   ray ret;
-  vec3 normal_vec;
-  vec3 intersect = triangle_ray_intersection(r, t, &normal_vec);
+  vec3 intersect = triangle_ray_intersection(r, t, nv);
   if(!point_on_ray(r, intersect)) {
     ret.origin.null = true;
     ret.vector.null = true;
     return ret;
   }
-  vec3 normalized_line_of_reflection = normalize_vector(normal_vec);
+  vec3 normalized_line_of_reflection = normalize_vector(nv);
   float temp = dot(normalized_line_of_reflection, r.vector)*(calc_magnitude(r.vector)*calc_magnitude(normalized_line_of_reflection));
   float angle_between_ray_and_nlr = rad_to_deg(acos(temp));
   //printf("%f\n", calc_magnitude(normal_vec));
@@ -373,7 +382,7 @@ ray bounce_ray(ray r, triangle t){
   float a1 = angle_between_vectors(rand_vec, normalized_line_of_reflection);
   float a2 = angle_between_vectors(normalized_line_of_reflection, rand_vec);
   float sa = (a1 < a2) ? a1 : a2;
-  vec3 linetri = subtract_3Dvectors_result(t.vertice_a, t.vertice_b);
+
 
   while(true){
     rand_vec.x =  ((rand()%100)/99.0 - 0.5)*2.0;
@@ -467,16 +476,18 @@ vec3 sphere_intersect(ray ra, sphere cs) {
   return ret;
 }
 
-ray bounce_ray_sphere(ray r, sphere s){
+ray bounce_ray_sphere(ray r, sphere s, vec3* nv){
   ray ret;
   vec3 intersect = sphere_intersect(r, s);
-  if(!point_on_ray(r, intersect)) {
+  if(intersect.null || !point_on_ray(r, intersect)) {
     ret.origin.null = true;
     ret.vector.null = true;
     return ret;
   }
   vec3 normal_vec = subtract_3Dvectors_result(intersect, s.center);
+  normal_vec.null = false;
   vec3 normalized_line_of_reflection = flip_vec(normalize_vector(normal_vec));
+  *nv = normalized_line_of_reflection;
   vec3 rand_vec;
   float a1;
   float a2;

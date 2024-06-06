@@ -106,9 +106,7 @@ list alloc_intlist(){
 }
 
 void add_int(list* l, int el){
-  void* i = malloc(sizeof(int));
-  general_add(l, i);
-  ((int*)l->elements)[l->num_elements-1] = el;
+  general_add(l, &el);
 }
 
 void rm_int(list* l, int ind){
@@ -160,9 +158,7 @@ list alloc_trianglelist(){
 }
 
 void add_triangle(list* l, triangle el){
-  void* i = malloc(sizeof(triangle));
-  general_add(l, i);
-  ((triangle*)l->elements)[l->num_elements-1] = el;
+  general_add(l, &el);
 }
 
 void rm_triangle(list* l, int ind){
@@ -230,9 +226,7 @@ list alloc_doublelist(){
 }
 
 void add_double(list* l, double el){
-  void* i = malloc(sizeof(double));
-  general_add(l, i);
-  ((double*)l->elements)[l->num_elements-1] = el;
+  general_add(l, &el);
 }
 
 void rm_double(list* l, double ind){
@@ -284,9 +278,7 @@ list alloc_raylist(){
 }
 
 void add_ray(list* l, ray el){
-  void* i = malloc(sizeof(ray));
-  general_add(l, i);
-  ((ray*)l->elements)[l->num_elements-1] = el;
+  general_add(l, &el);
 }
 
 void rm_ray(list* l, double ind){
@@ -358,9 +350,9 @@ list alloc_materiallist(){
 }
 
 void add_material(list* l, material el){
-  void* i = malloc(sizeof(material));
-  general_add(l, i);
-  ((material*)l->elements)[l->num_elements-1] = el;
+  // void* i = malloc(sizeof(material));
+  general_add(l, (void*)&el);
+  // ((material*)l->elements)[l->num_elements-1] = el;
 }
 
 void rm_material(list* l, int ind){
@@ -407,9 +399,7 @@ list alloc_spherelist(){
 }
 
 void add_sphere(list* l, sphere el){
-  void* i = malloc(sizeof(sphere));
-  general_add(l, i);
-  ((sphere*)l->elements)[l->num_elements-1] = el;
+  general_add(l, &el);
 }
 
 void rm_sphere(list* l, int ind){

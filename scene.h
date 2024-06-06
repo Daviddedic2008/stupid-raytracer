@@ -30,3 +30,5 @@ void f_return(color* c);
 
 void offset_all_triangles(float x, float y, float z);
 
+void get_normals();
+
